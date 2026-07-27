@@ -12,7 +12,7 @@ cd ~/git/agent-skills
 ./setup
 ```
 
-The setup script links each repository skill into `~/.claude/skills`, then exposes that shared directory through both `~/.agent/skills` and the standard `~/.agents/skills` location.
+The setup script links each repository skill into `~/.claude/skills`, exposes that shared directory through both `~/.agent/skills` and the standard `~/.agents/skills` location, and installs the Claude status line from `integrations/claude`.
 
 Existing unrelated skills are preserved. If a migrated skill already exists at one of the managed paths, use:
 
@@ -29,3 +29,7 @@ Conflicting paths are moved under `~/.agent-skills-backups` before they are repl
 - `prepare-for-review`
 - `review-pr`
 - `review-review`
+
+## Integrations
+
+- Claude Code status line

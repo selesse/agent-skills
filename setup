@@ -7,7 +7,7 @@ require "optparse"
 options = { force: false, dry_run: false }
 OptionParser.new do |parser|
   parser.banner = "Usage: ./setup [options]"
-  parser.on("--force", "Back up and replace conflicting skill paths") { options[:force] = true }
+  parser.on("--force", "Back up and replace conflicting managed paths") { options[:force] = true }
   parser.on("--dry-run", "Show changes without applying them") { options[:dry_run] = true }
 end.parse!
 
@@ -25,6 +25,7 @@ links = skills.map do |source|
   [source, File.join(claude_skills, File.basename(source))]
 end
 links.concat([
+  [File.join(repo_root, "integrations", "claude", "statusline.sh"), File.join(home, ".claude", "statusline.sh")],
   [claude_skills, File.join(home, ".agent", "skills")],
   [claude_skills, File.join(home, ".agents", "skills")],
 ])
