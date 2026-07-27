@@ -1,0 +1,77 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+require "optparse"
+
+options = { force: false, dry_run: false }
+OptionParser.new do |parser|
+  parser.banner = "Usage: ./setup [options]"
+  parser.on("--force", "Back up and replace conflicting skill paths") { options[:force] = true }
+  parser.on("--dry-run", "Show changes without applying them") { options[:dry_run] = true }
+end.parse!
+
+home = File.expand_path(ENV.fetch("HOME"))
+repo_root = File.expand_path(__dir__)
+skills_root = File.join(repo_root, "skills")
+claude_skills = File.join(home, ".claude", "skills")
+
+skills = Dir.glob(File.join(skills_root, "*", "SKILL.md"))
+  .map { |path| File.dirname(path) }
+  .sort
+abort("No skills found in #{skills_root}") if skills.empty?
+
+links = skills.map do |source|
+  [source, File.join(claude_skills, File.basename(source))]
+end
+links.concat([
+  [claude_skills, File.join(home, ".agent", "skills")],
+  [claude_skills, File.join(home, ".agents", "skills")],
+])
+
+def path_exists?(path)
+  File.exist?(path) || File.symlink?(path)
+end
+
+def same_link?(source, destination)
+  return false unless File.symlink?(destination)
+
+  File.realpath(source) == File.realpath(destination)
+rescue Errno::ENOENT
+  File.expand_path(File.readlink(destination), File.dirname(destination)) == File.expand_path(source)
+end
+
+conflicts = links.filter_map do |source, destination|
+  destination if path_exists?(destination) && !same_link?(source, destination)
+end
+
+if conflicts.any? && !options[:force]
+  warn "Conflicting paths already exist:"
+  conflicts.each { |path| warn "  #{path}" }
+  abort("Re-run with --force to back them up and replace them")
+end
+
+backup_root = File.join(home, ".agent-skills-backups", Time.now.strftime("%Y%m%d%H%M%S"))
+
+links.each do |source, destination|
+  if same_link?(source, destination)
+    puts "Already linked: #{destination}"
+    next
+  end
+
+  if path_exists?(destination)
+    relative = destination.delete_prefix("#{home}/")
+    backup = File.join(backup_root, relative)
+    puts "Back up #{destination} -> #{backup}"
+    unless options[:dry_run]
+      FileUtils.mkdir_p(File.dirname(backup))
+      FileUtils.mv(destination, backup)
+    end
+  end
+
+  puts "Link #{destination} -> #{source}"
+  next if options[:dry_run]
+
+  FileUtils.mkdir_p(File.dirname(destination))
+  FileUtils.ln_s(source, destination)
+end
