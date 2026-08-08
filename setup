@@ -42,9 +42,9 @@ rescue Errno::ENOENT
   File.expand_path(File.readlink(destination), File.dirname(destination)) == File.expand_path(source)
 end
 
-conflicts = links.filter_map do |source, destination|
-  destination if path_exists?(destination) && !same_link?(source, destination)
-end
+conflicts = links.select do |source, destination|
+  path_exists?(destination) && !same_link?(source, destination)
+end.map { |_source, destination| destination }
 
 if conflicts.any? && !options[:force]
   warn "Conflicting paths already exist:"
