@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "json"
 require "optparse"
 
 options = { force: false, dry_run: false }
@@ -46,6 +47,16 @@ conflicts = links.select do |source, destination|
   path_exists?(destination) && !same_link?(source, destination)
 end.map { |_source, destination| destination }
 
+settings_path = File.join(home, ".claude", "settings.json")
+desired_status_line = {
+  "type" => "command",
+  "command" => "bash '#{File.join(home, '.claude', 'statusline.sh')}'",
+}
+
+existing_settings = File.exist?(settings_path) ? JSON.parse(File.read(settings_path)) : {}
+status_line_conflict = existing_settings.key?("statusLine") && existing_settings["statusLine"] != desired_status_line
+conflicts << "#{settings_path} (statusLine)" if status_line_conflict
+
 if conflicts.any? && !options[:force]
   warn "Conflicting paths already exist:"
   conflicts.each { |path| warn "  #{path}" }
@@ -75,4 +86,25 @@ links.each do |source, destination|
 
   FileUtils.mkdir_p(File.dirname(destination))
   FileUtils.ln_s(source, destination)
+end
+
+if existing_settings["statusLine"] == desired_status_line
+  puts "Already configured: #{settings_path} statusLine"
+else
+  if status_line_conflict
+    relative = settings_path.delete_prefix("#{home}/")
+    backup = File.join(backup_root, relative)
+    puts "Back up #{settings_path} -> #{backup}"
+    unless options[:dry_run]
+      FileUtils.mkdir_p(File.dirname(backup))
+      FileUtils.cp(settings_path, backup)
+    end
+  end
+
+  puts "Set statusLine in #{settings_path}"
+  unless options[:dry_run]
+    FileUtils.mkdir_p(File.dirname(settings_path))
+    updated_settings = existing_settings.merge("statusLine" => desired_status_line)
+    File.write(settings_path, "#{JSON.pretty_generate(updated_settings)}\n")
+  end
 end
