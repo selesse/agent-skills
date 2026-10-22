@@ -8,12 +8,15 @@ five_h=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty'
 five_h_reset=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
 week=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
 
-# Colors (ANSI)
-cyan="\033[36m"
-green="\033[32m"
-yellow="\033[33m"
-magenta="\033[35m"
-red="\033[31m"
+# Colors (xterm 256). Green, yellow and red mean how full a meter is (ctx, 5h,
+# wk), so the labels use colors of their own.
+lavender="\033[38;5;141m"
+pink="\033[38;5;211m"
+sky="\033[38;5;110m"
+orchid="\033[38;5;176m"
+green="\033[38;5;114m"
+yellow="\033[38;5;221m"
+red="\033[38;5;203m"
 reset="\033[0m"
 
 # Worktree name: extract from ~/world/trees/<name>/src
@@ -68,10 +71,10 @@ fi
 
 # Build output
 parts=()
-[[ -n "$model" ]] && parts+=("${yellow}${model}${reset}")
-[[ -n "$worktree" ]] && parts+=("${magenta}${worktree}${reset}")
-[[ -n "$branch" ]] && parts+=("${cyan}${branch}${reset}")
-[[ -n "$pr" ]] && parts+=("${green}PR ${pr}${reset}")
+[[ -n "$model" ]] && parts+=("${lavender}${model}${reset}")
+[[ -n "$worktree" ]] && parts+=("${pink}${worktree}${reset}")
+[[ -n "$branch" ]] && parts+=("${sky}${branch}${reset}")
+[[ -n "$pr" ]] && parts+=("${orchid}PR ${pr}${reset}")
 [[ -n "$used_pct" ]] && parts+=("${ctx_color}ctx ${used_pct}%${reset}")
 [[ -n "$five_h" ]] && parts+=("$(pct_color "$five_h")5h ${five_h%.*}%${five_h_resets:+ ↻$five_h_resets}${reset}")
 [[ -n "$week" ]] && parts+=("$(pct_color "$week")wk ${week%.*}%${reset}")
