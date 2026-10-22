@@ -3,6 +3,10 @@ input=$(cat)
 cwd=$(echo "$input" | jq -r '.cwd // empty')
 model=$(echo "$input" | jq -r '.model.display_name // empty')
 used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
+# Subscription limits: only for Pro/Max, and only after the session's first response
+five_h=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
+five_h_reset=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
+week=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
 
 # Colors (ANSI)
 cyan="\033[36m"
@@ -44,6 +48,24 @@ if [[ -n "$used_pct" ]]; then
   fi
 fi
 
+# Usage color, as for the context window: red if >=80%, yellow if >=50%, green otherwise
+pct_color() {
+  local pct=${1%.*}
+  if [[ "$pct" -ge 80 ]]; then
+    echo "$red"
+  elif [[ "$pct" -ge 50 ]]; then
+    echo "$yellow"
+  else
+    echo "$green"
+  fi
+}
+
+# When the 5-hour window resets, as local HH:MM (BSD date on macOS, GNU on Linux)
+five_h_resets=""
+if [[ -n "$five_h_reset" ]]; then
+  five_h_resets=$(date -r "$five_h_reset" +%H:%M 2>/dev/null || date -d "@$five_h_reset" +%H:%M 2>/dev/null)
+fi
+
 # Build output
 parts=()
 [[ -n "$model" ]] && parts+=("${yellow}${model}${reset}")
@@ -51,6 +73,8 @@ parts=()
 [[ -n "$branch" ]] && parts+=("${cyan}${branch}${reset}")
 [[ -n "$pr" ]] && parts+=("${green}PR ${pr}${reset}")
 [[ -n "$used_pct" ]] && parts+=("${ctx_color}ctx ${used_pct}%${reset}")
+[[ -n "$five_h" ]] && parts+=("$(pct_color "$five_h")5h ${five_h%.*}%${five_h_resets:+ ↻$five_h_resets}${reset}")
+[[ -n "$week" ]] && parts+=("$(pct_color "$week")wk ${week%.*}%${reset}")
 
 # Join with separator
 output=""
