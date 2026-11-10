@@ -17,6 +17,7 @@ orchid="\033[38;5;176m"
 green="\033[38;5;114m"
 yellow="\033[38;5;221m"
 red="\033[38;5;203m"
+track="\033[38;5;238m"
 reset="\033[0m"
 
 # Worktree name: extract from ~/world/trees/<name>/src
@@ -63,6 +64,28 @@ pct_color() {
   fi
 }
 
+# A meter drawn in block glyphs, like the Omarchy screensaver: full blocks
+# for the used part, an eighth-block for the remainder, and a dim shaded track
+# for what's left, e.g. bar 37 → ███▋░░░░░░
+bar() {
+  local pct=${1%.*} width=10 color=$2
+  (( pct < 0 )) && pct=0
+  (( pct > 100 )) && pct=100
+  local eighths=$(( pct * width * 8 / 100 ))
+  local full=$(( eighths / 8 )) part=$(( eighths % 8 ))
+  local partials=(" " "▏" "▎" "▍" "▌" "▋" "▊" "▉")
+  local out="" i
+  for (( i = 0; i < full; i++ )); do out+="█"; done
+  local empty=$(( width - full ))
+  if (( part > 0 )); then
+    out+="${partials[$part]}"
+    (( empty-- ))
+  fi
+  out+="${track}"
+  for (( i = 0; i < empty; i++ )); do out+="░"; done
+  echo "${color}${out}${reset}"
+}
+
 # When the 5-hour window resets, as local HH:MM (BSD date on macOS, GNU on Linux)
 five_h_resets=""
 if [[ -n "$five_h_reset" ]]; then
@@ -75,9 +98,9 @@ parts=()
 [[ -n "$worktree" ]] && parts+=("${pink}${worktree}${reset}")
 [[ -n "$branch" ]] && parts+=("${sky}${branch}${reset}")
 [[ -n "$pr" ]] && parts+=("${orchid}PR ${pr}${reset}")
-[[ -n "$used_pct" ]] && parts+=("${ctx_color}ctx ${used_pct}%${reset}")
-[[ -n "$five_h" ]] && parts+=("$(pct_color "$five_h")5h ${five_h%.*}%${five_h_resets:+ ↻$five_h_resets}${reset}")
-[[ -n "$week" ]] && parts+=("$(pct_color "$week")wk ${week%.*}%${reset}")
+[[ -n "$used_pct" ]] && parts+=("${ctx_color}ctx $(bar "$used_pct" "$ctx_color") ${ctx_color}${used_pct%.*}%${reset}")
+[[ -n "$five_h" ]] && parts+=("$(pct_color "$five_h")5h $(bar "$five_h" "$(pct_color "$five_h")") $(pct_color "$five_h")${five_h%.*}%${five_h_resets:+ ↻$five_h_resets}${reset}")
+[[ -n "$week" ]] && parts+=("$(pct_color "$week")wk $(bar "$week" "$(pct_color "$week")") $(pct_color "$week")${week%.*}%${reset}")
 
 # Join with separator
 output=""
